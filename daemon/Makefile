@@ -1,7 +1,7 @@
 TARGET=		rtpengine
 
-with_iptables_option ?= yes
-with_transcoding ?= yes
+with_iptables_option ?= no
+with_transcoding ?= no
 
 # look for bcg729
 # system pkg-config
@@ -40,7 +40,7 @@ bcg729_lib := -L../bcg729/src/ -lbcg729
 else
 # /usr/local/include when installing from git
 ifneq (,$(wildcard /usr/local/include/bcg729/decoder.h))
-have_bcg729 := yes
+have_bcg729 := no
 bcg729_inc := -I/usr/local/include/
 bcg729_lib := -L/usr/local/lib64/ -lbcg729
 endif

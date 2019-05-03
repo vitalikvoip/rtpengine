@@ -6,8 +6,6 @@ include lib/lib.Makefile
 
 all:
 	$(MAKE) -C daemon
-	$(MAKE) -C recording-daemon
-	$(MAKE) -C iptables-extension
 
 .PHONY: with-kernel
 
@@ -16,22 +14,10 @@ with-kernel: all
 
 distclean clean:
 	$(MAKE) -C daemon clean
-	$(MAKE) -C recording-daemon clean
-	$(MAKE) -C iptables-extension clean
-	$(MAKE) -C kernel-module clean
-	$(MAKE) -C t clean
 	rm -rf project.tgz cov-int
 
 .DEFAULT:
 	$(MAKE) -C daemon $@
-	$(MAKE) -C recording-daemon $@
-	$(MAKE) -C iptables-extension $@
-	$(MAKE) -C kernel-module $@
-
-.PHONY: check
-
-check: all
-	$(MAKE) -C t
 
 coverity:
 	cov-build --dir cov-int $(MAKE) check
