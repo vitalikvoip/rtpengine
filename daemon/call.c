@@ -933,9 +933,37 @@ static void __fill_stream(struct packet_stream *ps, const struct endpoint *epp, 
 	ep = *epp;
 	ep.port += port_off;
 
+	char addr_o[100];
+	char addr_n[100];
+	sockaddr_print_p(&ps->advertised_endpoint.address, addr_o, sizeof(addr_o));
+	sockaddr_print_p(&ep.address, addr_n, sizeof(addr_n));
+
 	/* if the endpoint hasn't changed, we do nothing */
-	if (PS_ISSET(ps, FILLED) && !memcmp(&ps->advertised_endpoint, &ep, sizeof(ep)))
+	if (PS_ISSET(ps, FILLED) && !memcmp(&ps->advertised_endpoint, &ep, sizeof(ep))) {
 		return;
+	} else {
+		ilog(LOG_INFO, "Endpoint has changed [ old => %s:%d ; new => %s:%d ]",
+				addr_o,ps->advertised_endpoint.port,
+				addr_n,ep.port);
+
+		GList *em_iter;
+		for (em_iter = media->endpoint_maps.head; em_iter; em_iter = em_iter->next) {
+			struct endpoint_map *em = em_iter->data;
+
+			if (!em->logical_intf)
+				continue;
+
+			GList *li_iter;
+			for (li_iter = em->logical_intf->list.head; li_iter; li_iter = li_iter->next) {
+				struct local_intf *li = li_iter->data;
+
+				if (!memcmp(&li->advertised_address.addr, &ep.address, sizeof(ep.address))) {
+					ilog(LOG_INFO, "New endpoint [ %s ] matched to one of local interfaces, ignoring it...", addr_n);
+					return;
+				}
+			}
+		}
+	}
 
 	ps->advertised_endpoint = ep;
 
@@ -1809,6 +1837,9 @@ int monologue_offer_answer(struct call_monologue *other_ml, GQueue *streams,
 	for (media_iter = streams->head; media_iter; media_iter = media_iter->next) {
 		sp = media_iter->data;
 		__C_DBG("processing media stream #%u", sp->index);
+
+		char *addr_s = sockaddr_print_buf(&sp->rtp_endpoint.address);
+		ilog(LOG_INFO, "Processing media stream #%u, rtp_endpoint => %s:%d", sp->index, addr_s, sp->rtp_endpoint.port);
 
 		/* first, check for existence of call_media struct on both sides of
 		 * the dialogue */
