@@ -1761,6 +1761,8 @@ static void new_priority(struct sdp_media *media, enum ice_candidate_type type, 
 	tpref = ice_type_preference(type);
 	prio = ice_priority_pref(tpref, lpref, 1);
 
+	ilog(LOG_DEBUG, "starting lpref => 0, tpref => %u, prio => %lu", tpref,prio);
+
 	cands = attr_list_get_by_id(&media->attributes, ATTR_CANDIDATE);
 	if (!cands)
 		goto out;
@@ -1768,27 +1770,35 @@ static void new_priority(struct sdp_media *media, enum ice_candidate_type type, 
 	for (l = cands->head; l; l = l->next) {
 		a = l->data;
 		c = &a->u.candidate;
+		ilog(LOG_DEBUG, "(calc prio %lu type %d > cand prio %lu %d) == %s ; component: %d",
+				prio,type,c->cand_parsed.priority,c->cand_parsed.type,
+				(prio>c->cand_parsed.priority)?"TRUE":"FALSE", c->cand_parsed.component_id);
 		if (c->cand_parsed.priority <= prio && c->cand_parsed.type == type
 				&& c->cand_parsed.component_id == 1)
 		{
 			/* tpref should come out as 126 (if host) here, unless the client isn't following
 			 * the RFC, in which case we must adapt */
 			tpref = ice_type_pref_from_prio(c->cand_parsed.priority);
+			ilog(LOG_DEBUG, "candidate priority => %lu; tpref => %u ", c->cand_parsed.priority, tpref);
 
 			lpref = ice_local_pref_from_prio(c->cand_parsed.priority);
+			ilog(LOG_DEBUG, "candidate priority => %lu; lpref => %u ", c->cand_parsed.priority, lpref);
 			if (lpref)
-				lpref--;
+				lpref++;
 			else {
 				/* we must deviate from the RFC recommended values */
 				if (tpref)
 					tpref--;
 				lpref = 65535;
 			}
+			ilog(LOG_DEBUG, "calculating new priority with tpref => %u, lpref => %u ", tpref, lpref);
 			prio = ice_priority_pref(tpref, lpref, 1);
 		}
 	}
 
 out:
+	ilog(LOG_DEBUG, "Final priority components tpref => %u lpref => %u", tpref,lpref);
+
 	*tprefp = tpref;
 	*lprefp = lpref;
 }
@@ -1804,6 +1814,8 @@ static void insert_candidate(struct sdp_chopper *chop, struct stream_fd *sfd,
 		local_pref = ifa->unique_id;
 
 	priority = ice_priority_pref(type_pref, local_pref, ps->component);
+	ilog(LOG_DEBUG,"New candidate %.*s, priority => %lu", ifa->ice_foundation.len,ifa->ice_foundation.s, priority);
+
 	chopper_append_c(chop, "a=candidate:");
 	chopper_append_str(chop, &ifa->ice_foundation);
 	chopper_append_printf(chop, " %u UDP %lu ", ps->component, priority);
