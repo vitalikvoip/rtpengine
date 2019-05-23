@@ -963,6 +963,18 @@ static void __fill_stream(struct packet_stream *ps, const struct endpoint *epp, 
 				}
 			}
 		}
+
+		if ((ps->component == 1 && ps->rtp_sink) || (ps->component == 2 && !ps->rtcp_sink)) {
+			if (!memcmp(&ps->rtp_sink->advertised_endpoint.address,&ep.address, sizeof(ep.address))) {
+				ilog(LOG_INFO, "New endpoint [ %s ] matched to advertised adde of our rtp_sink", addr_n);
+				return;
+			}
+		} else if (ps->component == 2 && ps->rtcp_sink) {
+			if (!memcmp(&ps->rtcp_sink->advertised_endpoint.address,&ep.address, sizeof(ep.address))) {
+				ilog(LOG_INFO, "New endpoint [ %s ] matched to advertised adde of our rtcp_sink", addr_n);
+				return;
+			}
+		}
 	}
 
 	ps->advertised_endpoint = ep;
