@@ -1856,7 +1856,7 @@ static void insert_candidates(struct sdp_chopper *chop, struct packet_stream *rt
 	media = rtp->media;
 
 	cand_type = ICT_HOST;
-	if (flags->ice_force_relay)
+	if (flags->ice_force_relay || flags->ice_relay)
 		cand_type = ICT_RELAY;
 	if (MEDIA_ISSET(media, PASSTHRU))
 		new_priority(sdp_media, cand_type, &type_pref, &local_pref);
