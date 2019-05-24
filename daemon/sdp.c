@@ -1684,7 +1684,7 @@ static int process_media_attributes(struct sdp_chopper *chop, struct sdp_media *
 				goto strip;
 
 			case ATTR_CANDIDATE:
-				if (flags->ice_force_relay) {
+				if (flags->ice_force_relay || flags->ice_relay) {
 					if ((attr->u.candidate.type_str.len == 5) &&
 					    (strncasecmp(attr->u.candidate.type_str.s, "relay", 5) == 0))
 						goto strip;
@@ -1855,8 +1855,11 @@ static void insert_candidates(struct sdp_chopper *chop, struct packet_stream *rt
 
 	media = rtp->media;
 
+	if (flags->ice_ignore)
+		return;
+
 	cand_type = ICT_HOST;
-	if (flags->ice_force_relay)
+	if (flags->ice_force_relay || flags->ice_relay)
 		cand_type = ICT_RELAY;
 	if (MEDIA_ISSET(media, PASSTHRU))
 		new_priority(sdp_media, cand_type, &type_pref, &local_pref);
