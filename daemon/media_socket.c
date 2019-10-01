@@ -1448,6 +1448,7 @@ static int media_packet_decrypt(struct packet_handler_ctx *phc)
 	 * 1 = forward and push update to redis */
 	int ret = 0;
 	if (phc->decrypt_func) {
+		ilog(LOG_DEBUG, "%s calling phc->decrypt_func()", __FUNCTION__);
 		str ori_s = phc->s;
 		ret = phc->decrypt_func(&phc->s, phc->in_srtp, phc->mp.sfd, &phc->mp.fsin, &phc->mp.tv, phc->mp.ssrc_in);
 		// XXX for stripped auth tag and duplicate invokations of rtp_payload
@@ -1467,8 +1468,10 @@ static int media_packet_decrypt(struct packet_handler_ctx *phc)
 int media_packet_encrypt(rewrite_func encrypt_func, struct packet_stream *out, struct media_packet *mp) {
 	int ret = 0x00; // 0x01 = error, 0x02 = update
 
-	if (!encrypt_func)
+	if (!encrypt_func) {
+		ilog(LOG_WARNING, "%s encrypt_func is NULL", __FUNCTION__);
 		return 0x00;
+	}
 
 	mutex_lock(&out->out_lock);
 
@@ -1637,9 +1640,11 @@ static int do_rtcp(struct packet_handler_ctx *phc) {
 	GQueue rtcp_list = G_QUEUE_INIT;
 	if (rtcp_parse(&rtcp_list, &phc->mp))
 		goto out;
-	if (phc->rtcp_filter)
+	if (phc->rtcp_filter) {
+		ilog(LOG_DEBUG, "%s calling phc->rtcp_filter()", __FUNCTION__);
 		if (phc->rtcp_filter(&phc->mp, &rtcp_list))
 			goto out;
+	}
 
 	// queue for output
 	codec_add_raw_packet(&phc->mp);
@@ -1721,6 +1726,9 @@ static int stream_packet(struct packet_handler_ctx *phc) {
 	// this sets rtcp, in_srtp, out_srtp, and sink
 	media_packet_rtcp_demux(phc);
 
+	if (phc->rtcp)
+		ilog(LOG_DEBUG, "%s RTCP packet received, %d bytes", __FUNCTION__, phc->s.len);
+
 	// this set payload_type, ssrc_in, ssrc_out and mp
 	media_packet_rtp(phc);
 
@@ -1738,6 +1746,7 @@ static int stream_packet(struct packet_handler_ctx *phc) {
 
 
 	handler_ret = media_packet_decrypt(phc);
+	ilog(LOG_DEBUG, "%s media_packet_decrypt() ret => %d", __FUNCTION__,handler_ret);
 
 	// If recording pcap dumper is set, then we record the call.
 	if (phc->mp.call->recording)
@@ -1758,8 +1767,10 @@ static int stream_packet(struct packet_handler_ctx *phc) {
 			goto drop;
 	}
 
-	if (G_LIKELY(handler_ret >= 0))
+	if (G_LIKELY(handler_ret >= 0)) {
+		ilog(LOG_DEBUG, "%s calling __media_packet_encrypt()", __FUNCTION__);
 		handler_ret = __media_packet_encrypt(phc);
+	}
 
 	if (phc->unkernelize) // for RTCP packet index updates
 		unkernelize(phc->mp.stream);

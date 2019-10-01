@@ -665,8 +665,10 @@ int rtcp_parse(GQueue *q, struct media_packet *mp) {
 	CAH(start, c);
 
 	while (1) {
-		if (!(hdr = rtcp_length_check(&s, sizeof(*hdr), &len)))
+		if (!(hdr = rtcp_length_check(&s, sizeof(*hdr), &len))) {
+			ilog(LOG_DEBUG, "%s rtcp_length_check() failed", __FUNCTION__);
 			break;
+		}
 
 		if (hdr->version != 2) {
 			ilog(LOG_DEBUG, "Unknown RTCP version %u", hdr->version);
@@ -715,6 +717,7 @@ next:
 	return 0;
 
 error:
+	ilog(LOG_DEBUG, "%s error", __FUNCTION__);
 	CAH(finish, c, &mp->fsin, &mp->sfd->socket.local, &mp->tv);
 	CAH(destroy);
 	rtcp_list_free(q);
@@ -736,6 +739,7 @@ int rtcp_avpf2avp_filter(struct media_packet *mp, GQueue *rtcp_list) {
 		switch (el->type) {
 			case RTCP_PT_RTPFB:
 			case RTCP_PT_PSFB:
+				ilog(LOG_DEBUG,"%s removing RTCP FB", __FUNCTION__);
 				start = el->u.buf;
 				memmove(start - removed, start + el->len - removed, left);
 				removed += el->len;
@@ -808,6 +812,8 @@ int rtcp_payload(struct rtcp_packet **out, str *p, const str *s) {
 		case RTCP_PT_APP:
 		// RFC 4585 + 5506
 		case RTCP_PT_PSFB:
+			if (rtcp->header.pt == RTCP_PT_PSFB)
+				ilog(LOG_DEBUG,"%s RTCP_PT_PSFB detected, FMT => %u, %d bytes", __FUNCTION__, (unsigned int)rtcp->header.count,s->len);
 		case RTCP_PT_RTPFB:
 		// RFC 3611 + 5506
 		case RTCP_PT_XR:
@@ -816,6 +822,8 @@ int rtcp_payload(struct rtcp_packet **out, str *p, const str *s) {
 	goto error;
 
 ok:
+	ilog(LOG_DEBUG, "%s buffer len => %d, rtcp body size => %d, pt => %u", __FUNCTION__, s->len, (int)ntohs(rtcp->header.length), rtcp->header.pt);
+
 	if (!p)
 		goto done;
 
@@ -836,16 +844,25 @@ int rtcp_avp2savp(str *s, struct crypto_context *c, struct ssrc_ctx *ssrc_ctx) {
 	u_int32_t *idx;
 	str to_auth, payload;
 
+	ilog(LOG_DEBUG, "%s: start", __FUNCTION__);
+
 	if (G_UNLIKELY(!ssrc_ctx))
 		return -1;
 	if (rtcp_payload(&rtcp, &payload, s))
 		return -1;
+
+	ilog(LOG_DEBUG, "%s: ssrc => %lu", __FUNCTION__, (long unsigned)rtcp->ssrc);
+
 	if (check_session_keys(c))
 		return -1;
+
+	ilog(LOG_DEBUG, "%s: ssrc => %lu, session keys verified", __FUNCTION__, (long unsigned)rtcp->ssrc);
 
 	if (!c->params.session_params.unencrypted_srtcp && crypto_encrypt_rtcp(c, rtcp, &payload,
 				ssrc_ctx->srtcp_index))
 		return -1;
+
+	ilog(LOG_DEBUG, "%s: ssrc => %lu, successfuly encrypted", __FUNCTION__, (long unsigned)rtcp->ssrc);
 
 	idx = (void *) s->s + s->len;
 	*idx = htonl((c->params.session_params.unencrypted_srtcp ? 0ULL : 0x80000000ULL) |
