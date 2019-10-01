@@ -933,9 +933,50 @@ static void __fill_stream(struct packet_stream *ps, const struct endpoint *epp, 
 	ep = *epp;
 	ep.port += port_off;
 
-	/* if the endpoint hasn't changed, we do nothing */
-	if (PS_ISSET(ps, FILLED) && !memcmp(&ps->advertised_endpoint, &ep, sizeof(ep)))
+    /* if the endpoint hasn't changed, we do nothing */
+	if (PS_ISSET(ps, FILLED) && !memcmp(&ps->advertised_endpoint, &ep, sizeof(ep))) {
 		return;
+	} else {
+		char addr_o[128];
+		char addr_n[128];
+
+		sockaddr_print_p(&ps->advertised_endpoint.address,addr_o,sizeof(addr_o));
+		sockaddr_print_p(&ep.address,addr_n,sizeof(addr_n));
+
+		ilog(LOG_INFO, "Endpoint has changed [ old => %s:%d ; new => %s:%d ]",
+				addr_o,ps->advertised_endpoint.port,
+				addr_n,ep.port);
+
+		GList *em_iter;
+		for (em_iter = media->endpoint_maps.head; em_iter; em_iter = em_iter->next) {
+			struct endpoint_map *em = em_iter->data;
+
+			if (!em->logical_intf)
+				continue;
+
+				GList *li_iter;
+				for (li_iter = em->logical_intf->list.head; li_iter; li_iter = li_iter->next) {
+					struct local_intf *li = li_iter->data;
+
+					if (!memcmp(&li->advertised_address.addr, &ep.address, sizeof(ep.address))) {
+						ilog(LOG_INFO, "New endpoint [ %s ] matched to one of local interfaces, ignoring it...", addr_n);
+						return;
+					}
+				}
+		}
+
+		if ((ps->component == 1 && ps->rtp_sink) || (ps->component == 2 && !ps->rtcp_sink)) {
+			if (!memcmp(&ps->rtp_sink->advertised_endpoint.address,&ep.address, sizeof(ep.address))) {
+				ilog(LOG_INFO, "New endpoint [ %s ] matched to advertised addr of our rtp_sink", addr_n);
+				return;
+			}
+		} else if (ps->component == 2 && ps->rtcp_sink) {
+			if (!memcmp(&ps->rtcp_sink->advertised_endpoint.address,&ep.address, sizeof(ep.address))) {
+				ilog(LOG_INFO, "New endpoint [ %s ] matched to advertised addr of our rtcp_sink", addr_n);
+				return;
+			}
+		}
+	}
 
 	ps->advertised_endpoint = ep;
 
