@@ -112,6 +112,8 @@ int kernel_setup_table(unsigned int id) {
 		return -1;
 	}
 
+	ilog(LOG_WARNING, "%s KERNEL SUPPORT DETECTED !!!!!!!!!!!!!!!", __FUNCTION__);
+
 	kernel.fd = fd;
 	kernel.table = id;
 	kernel.is_open = 1;
