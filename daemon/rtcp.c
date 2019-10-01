@@ -730,6 +730,10 @@ int rtcp_avpf2avp_filter(struct media_packet *mp, GQueue *rtcp_list) {
 	void *start;
 	unsigned int removed, left;
 
+	ilog(LOG_DEBUG,"%s called, skipping it", __FUNCTION__);
+
+	return 0;
+
 	left = mp->raw.len;
 	removed = 0;
 	for (l = rtcp_list->head; l; l = l->next) {
