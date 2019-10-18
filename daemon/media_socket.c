@@ -1469,7 +1469,7 @@ int media_packet_encrypt(rewrite_func encrypt_func, struct packet_stream *out, s
 	int ret = 0x00; // 0x01 = error, 0x02 = update
 
 	if (!encrypt_func) {
-		ilog(LOG_WARNING, "%s encrypt_func is NULL", __FUNCTION__);
+		ilog(LOG_DEBUG, "%s encrypt_func is NULL", __FUNCTION__);
 		return 0x00;
 	}
 
