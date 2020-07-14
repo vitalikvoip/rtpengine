@@ -1699,7 +1699,7 @@ static int process_media_attributes(struct sdp_chopper *chop, struct sdp_media *
 
 			case ATTR_RTCP:
 			case ATTR_RTCP_MUX:
-				if (flags->ice_force_relay)
+				if (flags->ice_force_relay || flags->ice_ignore)
 					break;
 				goto strip;
 
@@ -2079,12 +2079,12 @@ int sdp_replace(struct sdp_chopper *chop, GQueue *sessions, struct call_monologu
 			ps = j->data;
 
 			if (!flags->ice_force_relay) {
-			        if (replace_media_port(chop, sdp_media, ps))
-				        goto error;
-			        if (replace_consecutive_port_count(chop, sdp_media, ps, j))
-				        goto error;
+				if (replace_media_port(chop, sdp_media, ps))
+					goto error;
+				if (replace_consecutive_port_count(chop, sdp_media, ps, j))
+					goto error;
 				if (replace_transport_protocol(chop, sdp_media, call_media))
-				        goto error;
+					goto error;
 				if (replace_codec_list(chop, sdp_media, call_media))
 					goto error;
 
@@ -2141,7 +2141,7 @@ int sdp_replace(struct sdp_chopper *chop, GQueue *sessions, struct call_monologu
 					chopper_append_c(chop, "a=rtcp-mux\r\n");
 					ps_rtcp = NULL;
 				}
-				else if (ps_rtcp && !flags->ice_force_relay) {
+				else if (ps_rtcp && !flags->ice_force_relay && !flags->ice_ignore) {
 					insert_rtcp_attr(chop, ps_rtcp, flags);
 					if (MEDIA_ISSET(call_media, RTCP_MUX))
 						chopper_append_c(chop, "a=rtcp-mux\r\n");
