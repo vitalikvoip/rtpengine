@@ -902,6 +902,8 @@ struct packet_stream *__packet_stream_new(struct call *call) {
 	recording_init_stream(stream);
 	stream->send_timer = send_timer_new(stream);
 
+	ilog(LOG_DEBUG, "%s call {%p} new stream {%p}", __FUNCTION__, call, stream);
+
 	return stream;
 }
 
@@ -914,6 +916,9 @@ static int __num_media_streams(struct call_media *media, unsigned int num_ports)
 	while (media->streams.length < num_ports) {
 		stream = __packet_stream_new(call);
 		stream->media = media;
+
+		ilog(LOG_DEBUG, "%s adding stream {%p} to media {%p}", __FUNCTION__,stream,media);
+
 		g_queue_push_tail(&media->streams, stream);
 		stream->component = media->streams.length;
 		ret++;
@@ -966,13 +971,20 @@ static void __fill_stream(struct packet_stream *ps, const struct endpoint *epp, 
 		}
 
 		if ((ps->component == 1 && ps->rtp_sink) || (ps->component == 2 && !ps->rtcp_sink)) {
-			if (!memcmp(&ps->rtp_sink->advertised_endpoint.address,&ep.address, sizeof(ep.address))) {
-				ilog(LOG_INFO, "New endpoint [ %s ] matched to advertised addr of our rtp_sink", addr_n);
+			if (!memcmp(&ps->rtp_sink->advertised_endpoint.address,&ep.address, sizeof(ep.address))
+					&& ep.port == ps->rtp_sink->advertised_endpoint.port) {
+
+				char addr_sink[128];
+				sockaddr_print_p(&ps->rtp_sink->advertised_endpoint.address,addr_sink,sizeof(addr_sink));
+
+				ilog(LOG_INFO, "media [%p] New endpoint [ %s:%d ] == [ %s:%d ] matched to advertised addr of our rtp_sink [%p]",
+						media, addr_n, ep.port, addr_sink, ps->rtp_sink->advertised_endpoint.port, ps->rtp_sink);
 				return;
 			}
 		} else if (ps->component == 2 && ps->rtcp_sink) {
-			if (!memcmp(&ps->rtcp_sink->advertised_endpoint.address,&ep.address, sizeof(ep.address))) {
-				ilog(LOG_INFO, "New endpoint [ %s ] matched to advertised addr of our rtcp_sink", addr_n);
+			if (!memcmp(&ps->rtcp_sink->advertised_endpoint.address,&ep.address, sizeof(ep.address))
+					&& ep.port == ps->rtcp_sink->advertised_endpoint.port) {
+				ilog(LOG_INFO, "New endpoint [ %s:%d ] matched to advertised addr of our rtcp_sink", addr_n, ep.port);
 				return;
 			}
 		}
@@ -1862,6 +1874,7 @@ int monologue_offer_answer(struct call_monologue *other_ml, GQueue *streams,
 		 * THIS side (recipient) before, then the structs will be populated with
 		 * details already. */
 
+		ilog(LOG_DEBUG, "media [%p] other_media [%p]", media, other_media);
 		if (flags && flags->fragment) {
 			// trickle ICE SDP fragment. don't do anything other than update
 			// the ICE stuff.
