@@ -1691,6 +1691,15 @@ static int process_media_attributes(struct sdp_chopper *chop, struct sdp_media *
 					else
 						break;
 				}
+				if (flags->ice_drop_host) {
+					if ((attr->u.candidate.type_str.len == 4) &&
+					    (strncasecmp(attr->u.candidate.type_str.s, "host", 4) == 0))
+						goto strip;
+					else if ((attr->u.candidate.type_str.len == 5) &&
+						(strncasecmp(attr->u.candidate.type_str.s, "srflx", 5) == 0))
+						goto strip;
+					break;
+				}
 				if (MEDIA_ISSET(media, PASSTHRU))
 					break;
 				if (!flags->ice_remove && !flags->ice_force)

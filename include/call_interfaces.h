@@ -58,6 +58,7 @@ struct sdp_ng_flags {
 	    ice_relay:1,
 	    ice_force_relay:1,
 	    ice_ignore:1,
+	    ice_drop_host:1,
 	    rtcp_mux_offer:1,
 	    rtcp_mux_require:1,
 	    rtcp_mux_demux:1,
